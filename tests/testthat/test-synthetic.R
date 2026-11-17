@@ -1,0 +1,21 @@
+test_that("synthetic generator is reproducible and produces the expected structure", {
+  source(file.path(project_root, "synthetic_data_generator.R"), local = TRUE)
+  first_path <- tempfile(fileext = ".csv")
+  second_path <- tempfile(fileext = ".csv")
+  invisible(capture.output(first <- generate_synthetic_traffic(300, output_file = first_path, seed = 7)))
+  invisible(capture.output(second <- generate_synthetic_traffic(300, output_file = second_path, seed = 7)))
+  expect_identical(first, second)
+  expect_equal(colnames(first), c("timestamp", "packets", "bytes", "traffic_volume"))
+  expect_equal(nrow(first), 300)
+  expect_true(all(first$traffic_volume >= 0))
+  loaded <- read.csv(first_path, stringsAsFactors = FALSE)
+  parsed <- process_timestamps(loaded, "timestamp")
+  expect_equal(nrow(detect_timestamp_gaps(parsed$timestamp)$gaps), 0)
+  expect_equal(detect_timestamp_gaps(parsed$timestamp)$interval_seconds, 60)
+})
+
+test_that("generator rejects invalid arguments", {
+  source(file.path(project_root, "synthetic_data_generator.R"), local = TRUE)
+  expect_error(generate_synthetic_traffic(0, output_file = tempfile()), "n_points")
+  expect_error(generate_synthetic_traffic(10, start_date = "bad", output_file = tempfile()), "start_date")
+})
